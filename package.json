@@ -1,0 +1,2 @@
+cd /usr/src/app
+ls -la package.json
