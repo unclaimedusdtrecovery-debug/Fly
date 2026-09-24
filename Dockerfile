@@ -1,38 +1,32 @@
-# Stage 1: Build the Application
-# We use node:18 as the base for building and installing dependencies.
+# syntax=docker/dockerfile:1
+
+# Stage 1: Build the application when a Node project is present.
 FROM node:18 AS build
 
-# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json first to leverage Docker caching.
-# If these files don't change, subsequent builds can skip 'npm install'.
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application source code
+# Copy the application source into the build context first so dependency installation
+# can happen whenever a package.json exists.
 COPY . .
 
-# Stage 2: Create the Final Production Image
-# We use node:18 as the runtime image with all the necessary tools.
+# Install dependencies only when a Node app is actually present.
+RUN if [ -f package.json ]; then npm install; fi
+
+# Stage 2: Create the final production image.
 FROM node:18
 
-# Set the working directory
 WORKDIR /usr/src/app
 
-# Copy the node_modules and built application files from the 'build' stage
-COPY --from=build /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/package*.json ./
-COPY --from=build /usr/src/app .
+# Copy the project source from the build stage.
+COPY --from=build /usr/src/app ./
 
-# Expose the port your app runs on
+ENV NODE_ENV=production
 ENV PORT=8080
-EXPOSE $PORT
+EXPOSE 8080
 
-# Run the application using the non-root user (recommended for security)
+# Run the application using the non-root user (recommended for security).
 USER node
 
-# Define the command to start your application
-CMD [ "node", "index.js" ]
+# Start the app when a package.json is present and can launch the service.
+# Otherwise, fall back to a direct Node entrypoint if one exists.
+CMD ["sh", "-c", "if [ -f package.json ] && npm run start --if-present >/dev/null 2>&1; then npm run start --if-present; elif [ -f index.js ]; then node index.js; else echo 'No application entrypoint found.' >&2; exit 1; fi"]
