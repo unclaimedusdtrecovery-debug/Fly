@@ -1,2 +1,10 @@
-cd /usr/src/app
-ls -la package.json
+{
+  "name": "my-fly-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {}
+}
+npm 
